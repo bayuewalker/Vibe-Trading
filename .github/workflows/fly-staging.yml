@@ -1,0 +1,131 @@
+name: Deploy Vibe-Trading to Fly.io staging
+
+# First run is triggered by merging this workflow. Later deploys are manual,
+# so unrelated pushes cannot unexpectedly create billable infrastructure.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fly-staging.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vibe-trading-fly-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Single-Machine staging deployment
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      APP_NAME: vibe-trading-staging
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      VIBE_API_AUTH_KEY: ${{ secrets.VIBE_API_AUTH_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Checkout reviewed main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${FLY_API_TOKEN}" ]]; then
+            echo "::error::Missing GitHub Actions secret FLY_API_TOKEN."
+            exit 1
+          fi
+          python -m py_compile deploy/check_single_machine.py
+          grep -q 'VIBE_TRADING_ENABLE_SCHEDULER = "0"' fly.toml
+          grep -q 'VIBE_BR_SYNC_ENABLED = "0"' fly.toml
+          grep -q 'VIBE_TRADING_CHANNELS_AUTO_START = "0"' fly.toml
+          grep -q 'auto_stop_machines = "off"' fly.toml
+
+      - name: Install flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@98172f70657cb3e15db199af139be99bd3e61200
+
+      - name: Create staging application if missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          flyctl auth whoami >/dev/null
+          if flyctl status --app "${APP_NAME}" >/dev/null 2>&1; then
+            echo "Existing Fly application: ${APP_NAME}"
+          else
+            # A token without app-creation permission will fail here.
+            # A globally occupied application name will also fail safely.
+            flyctl apps create "${APP_NAME}"
+          fi
+          flyctl config validate --config fly.toml --app "${APP_NAME}"
+
+      - name: Configure staging-only secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Fly API token is never passed to the application.
+          # Existing API_AUTH_KEY is preserved across redeploys.
+          if [[ -n "${VIBE_API_AUTH_KEY}" ]]; then
+            flyctl secrets set "API_AUTH_KEY=${VIBE_API_AUTH_KEY}" --app "${APP_NAME}"
+            echo "API_AUTH_KEY configured from the GitHub repository secret."
+          elif flyctl secrets list --app "${APP_NAME}" | grep -Eq '^API_AUTH_KEY[[:space:]]'; then
+            echo "Existing API_AUTH_KEY preserved."
+          else
+            generated_key="$(openssl rand -hex 32)"
+            flyctl secrets set "API_AUTH_KEY=${generated_key}" --app "${APP_NAME}"
+            unset generated_key
+            echo "::notice::Generated an unrecoverable initial API_AUTH_KEY. For dashboard login, create VIBE_API_AUTH_KEY in GitHub Secrets and rerun this workflow."
+          fi
+
+          if [[ -n "${OPENROUTER_API_KEY}" ]]; then
+            flyctl secrets set "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}" --app "${APP_NAME}"
+            echo "OpenRouter provider secret configured."
+          else
+            echo "::notice::OPENROUTER_API_KEY not set; /ready may return 503 until it is configured."
+          fi
+
+          # Never run this staging app with broker/exchange credentials.
+          if flyctl secrets list --app "${APP_NAME}" | grep -Ei '^(IBKR_|LONGBRIDGE_|BINANCE_|OKX_|MT5_|BYBIT_|KRAKEN_)'; then
+            echo "::error::Broker/trading secrets detected. Refusing research-only staging deployment."
+            exit 1
+          fi
+
+      - name: Deploy exactly one staging Machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          # fly.toml creates a 10 GB volume when absent. --ha=false prevents
+          # automatic spare Machines that cannot share this single volume.
+          flyctl deploy --remote-only --ha=false --config fly.toml --app "${APP_NAME}"
+
+      - name: Verify single Machine, attached volume, and public liveness
+        shell: bash
+        run: |
+          set -euo pipefail
+          python deploy/check_single_machine.py --app "${APP_NAME}"
+          flyctl status --app "${APP_NAME}"
+          curl --fail --silent --show-error --retry 8 --retry-delay 5 --retry-connrefused \
+            --max-time 20 "https://${APP_NAME}.fly.dev/live"
+          ready_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --max-time 20 "https://${APP_NAME}.fly.dev/ready")"
+          if [[ "${ready_status}" != 200 && "${ready_status}" != 503 ]]; then
+            echo "::error::Unexpected readiness response: HTTP ${ready_status}"
+            exit 1
+          fi
+          {
+            echo "## Fly.io staging deployment"
+            echo ""
+            echo "- App: \`${APP_NAME}\`"
+            echo "- URL: https://${APP_NAME}.fly.dev"
+            echo "- Single Machine / volume check: PASS"
+            echo "- Liveness: HTTP 200"
+            echo "- LLM readiness: HTTP ${ready_status} (503 means provider key/model not ready)"
+            echo "- Live trading: disabled; scheduler and sync off"
+            echo ""
+            echo "An authenticated LLM call and browser login still require separate verification."
+          } >> "${GITHUB_STEP_SUMMARY}"
