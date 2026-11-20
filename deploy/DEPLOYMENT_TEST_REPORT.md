@@ -156,3 +156,23 @@ POST /api/paper-accounts -> 403
 ```
 
 Startup logged that the frontend is served from `/app/frontend/dist`, warned that `0.0.0.0` has no `API_AUTH_KEY`, and marked OKX and yfinance reachable. The LLM preflight line was also OK. That check only GETs the provider base URL (`https://openrouter.ai`) and does not send a key or a prompt. `/ready` is the credential result, and it was 503. No model call was made.
+
+## Review follow-up
+
+After the requested changes (fail closed when sandbox capabilities are missing, and `--ha=false` plus a single-Machine check):
+
+```text
+.venv/bin/pytest agent/tests/test_fly_staging.py --tb=short -q
+16 passed in 2.20s
+```
+
+The new entrypoint test puts a fake `id` and `setpriv` on `PATH`, forces the capability probe to fail, and asserts the server command does not run. A second test asserts the command runs only when the probe is allowed to keep `CAP_SETUID` and `CAP_SETGID`. `deploy/check_single_machine.py` accepts one attached `app` Machine and rejects a second `app` Machine. Its output does not include fixture secret values.
+
+The Fly image was rebuilt after that entrypoint change:
+
+```text
+docker build --target fly -t vibe-trading:fly .
+Successfully built e1993e3d20f1
+```
+
+`docker run --rm vibe-trading:fly id -u -n` printed `vibe`. A process started by the entrypoint was uid 1000 with ambient capability mask `00000000000000c0`. The script inside the image contains the fail-closed refusal and does not contain the previous "start without those capabilities" path. No Fly app was created.

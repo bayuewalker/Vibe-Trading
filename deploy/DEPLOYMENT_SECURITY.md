@@ -30,7 +30,7 @@ The default image (`runtime`) keeps `USER vibe`. The Fly build target starts as 
 
 `vibe-sandbox` (uid 10001, no home, no shell) is still the account `runner.py` tries to use for generated strategy code. The entrypoint asks `setpriv` to keep only `CAP_SETUID` and `CAP_SETGID` across the drop, which is the same pair `docker-compose.yml` adds for that purpose. Those capabilities let `vibe` switch to `vibe-sandbox`. They do not let `vibe-sandbox` become root.
 
-When the platform refuses the capability, `runner.py` logs a warning and runs the subprocess as `vibe`. The AST scrubber remains the control that always runs. This profile does not delete that scrubber, does not chmod the data directory `0777`, and does not set a switch that skips the sandbox.
+When the platform refuses the capability, the entrypoint exits and the server does not start. Generated strategy code therefore does not run as `vibe`, the user that owns `.env`, sessions, and the rest of the volume. This profile does not chmod the data directory `0777` and does not set a switch that skips the sandbox.
 
 ## Persistent files
 

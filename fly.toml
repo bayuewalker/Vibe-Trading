@@ -19,8 +19,10 @@ kill_timeout = 30
 
 [deploy]
   # Volume-backed apps cannot use bluegreen or canary. Rolling replaces the
-  # one Machine. Do not scale past one Machine: the volume attaches once, and
-  # a second Machine would run without this state (or fail to mount it).
+  # one Machine. The first deploy must pass --ha=false: min_machines_running
+  # is a floor, and Fly otherwise creates a second Machine. The volume
+  # attaches once. Confirm with deploy/check_single_machine.py before any
+  # scheduled work. Do not scale past one Machine.
   strategy = "rolling"
 
 [env]

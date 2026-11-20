@@ -3,12 +3,13 @@
 # can be handed to the unprivileged `vibe` account. The API process is never
 # left running as root.
 #
-# CAP_SETUID and CAP_SETGID are kept across the drop when the platform allows
-# it. That is the same pair docker-compose grants so runner.py can execute
-# generated strategy code as `vibe-sandbox`. If the platform refuses those
-# capabilities, the server still starts: runner.py logs a warning and keeps
-# the AST scrubber. This script does not chmod the data directory world-writable
-# and does not disable that scrubber.
+# CAP_SETUID and CAP_SETGID must be kept across the drop. That is the same pair
+# docker-compose grants so runner.py can execute generated strategy code as
+# `vibe-sandbox`. If the platform refuses those capabilities, this script
+# exits. It does not start the server as `vibe`, because that user owns the
+# volume, the settings file, and any broker state. The AST scrubber is not a
+# substitute for the uid drop. This script does not chmod the data directory
+# world-writable.
 set -eu
 
 DATA_DIR="${VIBE_TRADING_HOME:-/home/vibe/.vibe-trading}"
@@ -31,18 +32,17 @@ drop_to_vibe() {
   export HOME=/home/vibe
   export USER=vibe
   export LOGNAME=vibe
-  if setpriv --reuid=vibe --regid=vibe --init-groups \
+  if ! setpriv --reuid=vibe --regid=vibe --init-groups \
     --inh-caps=-all,+setuid,+setgid \
     --ambient-caps=-all,+setuid,+setgid \
     -- true 2>/dev/null; then
-    exec setpriv --reuid=vibe --regid=vibe --init-groups \
-      --inh-caps=-all,+setuid,+setgid \
-      --ambient-caps=-all,+setuid,+setgid \
-      -- "$@"
+    echo "refusing to start: cannot drop generated code to vibe-sandbox (CAP_SETUID/CAP_SETGID unavailable)" >&2
+    exit 1
   fi
-  echo "setpriv could not keep SETUID/SETGID; starting as vibe without those capabilities" >&2
-  echo "generated-code subprocesses will not drop to vibe-sandbox; the AST scrubber stays active" >&2
-  exec setpriv --reuid=vibe --regid=vibe --init-groups -- "$@"
+  exec setpriv --reuid=vibe --regid=vibe --init-groups \
+    --inh-caps=-all,+setuid,+setgid \
+    --ambient-caps=-all,+setuid,+setgid \
+    -- "$@"
 }
 
 if [ "$(id -u)" = "0" ]; then
