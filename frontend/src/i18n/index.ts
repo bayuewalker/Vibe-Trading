@@ -38,6 +38,9 @@ const localeLoaders = {
 } satisfies Record<LazyLanguageCode, () => Promise<{ default: typeof en }>>;
 
 const LANGUAGE_STORAGE_KEY = "i18nextLng";
+// Browser locale must never override the English first-visit default.
+// Explicit user choices remain persisted in localStorage.
+export const LANGUAGE_DETECTION_ORDER = ["localStorage"] as const;
 const LOCALE_LOAD_ATTEMPTS = 2;
 const loadedLanguages = new Set<SupportedLanguageCode>(["en"]);
 const loadingLanguages = new Map<LazyLanguageCode, Promise<void>>();
@@ -140,10 +143,8 @@ i18n
       en: { translation: en },
     },
     initAsync: false,
-    // Default to English for everyone on first visit; only an explicit toggle
-    // (persisted to localStorage) switches language. After a manual choice
-    // the navigator value can act as a fallback when the saved language is
-    // removed.
+    // English is the first-visit default regardless of browser language.
+    // Only an explicit language selection stored in localStorage overrides it.
     fallbackLng: "en",
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),
     // NOTE: Intentionally NOT using nonExplicitSupportedLngs — it strips
@@ -151,13 +152,8 @@ i18n
     // isSupportedCode to reject them ("zh-CN" → "zh", not in supportedLngs).
     interpolation: { escapeValue: false },
     detection: {
-      // In browsers the navigator.language gives the user's browser locale,
-      // useful as a fallback when no explicit choice is saved. In Node.js
-      // (SSR, tests) navigator.language reflects the *OS* locale which is
-      // meaningless for a browser-only app — skip it there.
-      order: typeof window !== "undefined"
-        ? ["localStorage", "navigator"]
-        : ["localStorage"],
+      // Never infer language from navigator/OS. A first-time visitor sees English.
+      order: [...LANGUAGE_DETECTION_ORDER],
       caches: ["localStorage"],
       lookupLocalStorage: "i18nextLng",
     },
