@@ -1,5 +1,5 @@
 import en from "../locales/en.json";
-import i18n, { SUPPORTED_LANGUAGES, isRtl } from "../index";
+import i18n, { LANGUAGE_DETECTION_ORDER, SUPPORTED_LANGUAGES, isRtl } from "../index";
 
 // ── helpers ────────────────────────────────────────────────────
 
@@ -128,6 +128,11 @@ describe("i18n interpolation parity", () => {
 // ── utility functions ──────────────────────────────────────────
 
 describe("i18n utilities", () => {
+  it("defaults to English unless the user explicitly persisted a selection", () => {
+    expect(LANGUAGE_DETECTION_ORDER).toEqual(["localStorage"]);
+    expect(i18n.options.fallbackLng).toContain("en");
+  });
+
   it("isRtl returns true for Arabic", () => {
     expect(isRtl("ar")).toBe(true);
   });

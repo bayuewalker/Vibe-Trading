@@ -36,6 +36,7 @@ EXPECTED_SLUGS = {
     "institutional-holdings-diff",
     "portfolio-checkup",
     "premarket-brief",
+    "tradingview-market-scan",
 }
 
 # 2026-08-04T12:00:00Z, fixed so first-fire assertions never depend on the clock.
@@ -89,6 +90,17 @@ class TestBundledCatalogue:
 
     def test_ships_the_expected_five(self) -> None:
         assert {p.slug for p in list_playbooks()} == EXPECTED_SLUGS
+
+    def test_tradingview_scan_is_research_only_and_fail_closed(self) -> None:
+        playbook = get_playbook("tradingview-market-scan")
+        rendered = playbook.render()
+        assert "official TradingView MCP" in rendered
+        assert "BLOCKED" in rendered
+        assert "Do not place, modify, or cancel any order" in rendered
+        assert "mcp_tradingview_" not in rendered
+        job = playbook.to_job(now_ms=NOW_MS)
+        assert job.schedule == "0 */4 * * *"
+        assert job.timezone == "UTC"
 
     def test_sorted_by_slug(self) -> None:
         slugs = [p.slug for p in list_playbooks()]

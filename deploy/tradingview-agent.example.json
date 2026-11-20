@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "tradingview": {
+      "type": "streamableHttp",
+      "url": "https://mcp.tradingview.com/mcp",
+      "auth": {
+        "type": "oauth",
+        "scopes": [
+          "mcp:read",
+          "mcp:tools"
+        ],
+        "clientName": "Vibe-Trading Research Desk",
+        "cacheDir": "/home/vibe/.vibe-trading/tradingview/oauth"
+      },
+      "toolTimeout": 40,
+      "enabledTools": [
+        "run_screener",
+        "get_screener_columns",
+        "get_symbol_data_batch",
+        "get_technicals_rating",
+        "get_ohlcv",
+        "search_symbols"
+      ]
+    }
+  }
+}
