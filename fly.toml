@@ -1,0 +1,69 @@
+# Single-instance Fly.io staging profile for Vibe-Trading.
+#
+# `fly deploy` creates billable Machines and, on first launch, the volume
+# named below. Do not deploy until that spend is authorized.
+#
+# Secrets are not stored here. Set them with `fly secrets set` (see
+# deploy/FLY_DEPLOYMENT.md). In particular API_AUTH_KEY is required: Fly's
+# proxy is not a loopback client, and the API rejects remote callers without it.
+
+app = "vibe-trading-staging"
+primary_region = "sin"
+
+kill_signal = "SIGTERM"
+kill_timeout = 30
+
+[build]
+  dockerfile = "Dockerfile"
+  build-target = "fly"
+
+[deploy]
+  # Volume-backed apps cannot use bluegreen or canary. Rolling replaces the
+  # one Machine. Do not scale past one Machine: the volume attaches once, and
+  # a second Machine would run without this state (or fail to mount it).
+  strategy = "rolling"
+
+[env]
+  VIBE_TRADING_HOME = "/home/vibe/.vibe-trading"
+  LANGCHAIN_PROVIDER = "openrouter"
+  LANGCHAIN_MODEL_NAME = "deepseek/deepseek-v4-pro"
+  OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+  # One scheduler in one Machine. Leave both off so a restart cannot duplicate
+  # scheduled research or the Brazilian data sync.
+  VIBE_TRADING_ENABLE_SCHEDULER = "0"
+  VIBE_BR_SYNC_ENABLED = "0"
+  VIBE_TRADING_CHANNELS_AUTO_START = "0"
+
+[processes]
+  app = "vibe-trading serve --host 0.0.0.0 --port 8899"
+
+[http_service]
+  internal_port = 8899
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  # Liveness only. /ready returns 503 until a provider credential is present,
+  # which would make Fly restart a Machine that is up but not yet configured.
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "15s"
+    timeout = "5s"
+    method = "GET"
+    path = "/live"
+
+[[vm]]
+  size = "performance-2x"
+  memory = "4gb"
+  cpus = 2
+  cpu_kind = "performance"
+  processes = ["app"]
+
+[mounts]
+  source = "vibe_data"
+  destination = "/home/vibe/.vibe-trading"
+  initial_size = "10gb"
+  snapshot_retention = 5
+  processes = ["app"]

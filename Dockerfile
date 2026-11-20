@@ -85,6 +85,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     fonts-noto-core \
     fonts-noto-cjk \
+    util-linux \
     && rm -rf /var/lib/apt/lists/*
 
 # Bring in the prebuilt venv from the builder stage.
@@ -118,3 +119,17 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # Run API server (serves frontend/dist as static files)
 CMD ["vibe-trading", "serve", "--host", "0.0.0.0", "--port", "8899"]
+
+# Fly.io target. `docker build` without `--target` still ends on `runtime`
+# (the stage below), so Compose and the default image stay USER vibe.
+# This target starts as root only long enough for deploy/docker-entrypoint.sh
+# to chown the mounted volume and exec the server as vibe.
+FROM runtime AS fly
+USER root
+COPY deploy/docker-entrypoint.sh /usr/local/bin/vibe-trading-entrypoint
+RUN chmod 755 /usr/local/bin/vibe-trading-entrypoint
+ENTRYPOINT ["/usr/local/bin/vibe-trading-entrypoint"]
+CMD ["vibe-trading", "serve", "--host", "0.0.0.0", "--port", "8899"]
+
+# Default image target. `docker build .` and Compose stay on this unprivileged stage.
+FROM runtime
