@@ -298,4 +298,8 @@ class SpotScreener:
         self._stop.set()
         task, self._task = self._task, None
         if task is not None:
-            await task
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
