@@ -128,6 +128,14 @@ describe("i18n interpolation parity", () => {
 // ── utility functions ──────────────────────────────────────────
 
 describe("i18n utilities", () => {
+  it("defaults to English without browser language detection", () => {
+    const detector = i18n.services.languageDetector as unknown as {
+      options?: { order?: string[] };
+    };
+    expect(detector.options?.order).toEqual(["localStorage"]);
+    expect(i18n.options.fallbackLng).toBe("en");
+  });
+
   it("isRtl returns true for Arabic", () => {
     expect(isRtl("ar")).toBe(true);
   });
