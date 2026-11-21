@@ -62,7 +62,7 @@ export function SpotScreener() {
   const snapshot = data?.snapshot;
   const stale = snapshot ? Date.now() - new Date(snapshot.as_of).getTime() > Math.max((data?.interval_seconds ?? 900) * 2000, 30 * 60_000) : false;
   return (
-    <main className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+    <section className="mx-auto max-w-6xl space-y-6 p-4 md:p-8" aria-label="Crypto Spot Screener">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Crypto Spot Screener</h1>
         <p className="text-sm text-muted-foreground">Automated Binance Spot / USDT research screening. TradingView links are for chart review; TradingView does not supply this data.</p>
@@ -101,6 +101,6 @@ export function SpotScreener() {
         <p className="rounded border p-4 text-sm text-muted-foreground">No completed scan yet. Enable VIBE_SPOT_SCREEN_ENABLED=1 on the Fly Machine and verify Binance public market-data access.</p>
       )}
       <p className="text-xs text-muted-foreground">Scores are deterministic technical filters, not profit probabilities or trade recommendations. No orders, DCA bots or AI model calls are triggered by screening.</p>
-    </main>
+    </section>
   );
 }
