@@ -1,4 +1,4 @@
-import { FlaskConical, Building2, Activity, BarChart3, BookOpen, Bot, CalendarClock, CandlestickChart, FileText, Layers, Settings, WalletCards } from "lucide-react";
+import { FlaskConical, Building2, Activity, BarChart3, BookOpen, Bot, CalendarClock, CandlestickChart, ScanSearch, FileText, Layers, Settings, WalletCards } from "lucide-react";
 
 export const NAVIGATION_GROUPS = [
   { id: "research", items: [
@@ -16,6 +16,7 @@ export const NAVIGATION_GROUPS = [
   { id: "automation", items: [
     { id: "pixelOffice", to: "/pixel-office", icon: Building2 },
     { id: "scheduled", to: "/scheduled", icon: CalendarClock },
+    { id: "spotScreener", to: "/spot-screener", icon: ScanSearch },
     { id: "runtime", to: "/runtime", icon: Activity },
     { id: "settings", to: "/settings", icon: Settings },
   ] },
