@@ -42,11 +42,11 @@ export function SidebarNavigation({ collapsed }: { collapsed: boolean }) {
       {!compact && <p className={cn("mb-1 px-3 text-[10px] font-medium text-muted-foreground/70", !drawer && "max-md:hidden")}>{t(`navigation.groups.${id}`)}</p>}
       <div className="space-y-0.5">
         {items.map(({ id: itemId, to, icon: Icon }) => {
-          const label = t(`layout.${itemId}`);
+          const label = itemId === "spotScreener" ? "Crypto Spot Screener" : t(`layout.${itemId}`);
           const active = isNavigationActive(to, pathname);
           return (
             <Link key={to} to={to} aria-label={label} aria-current={active ? "page" : undefined}
-              title={`${label} — ${t(`navigation.descriptions.${itemId}`)}`}
+              title={itemId === "spotScreener" ? `${label} — automated research rankings` : `${label} — ${t(`navigation.descriptions.${itemId}`)}`}
               onClick={() => setMenuOpen(false)}
               className={cn("flex items-center rounded-md text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                 compact ? "justify-center px-2 py-1.5" : "gap-3 px-3 py-1.5",
