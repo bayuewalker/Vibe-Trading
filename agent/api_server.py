@@ -115,6 +115,9 @@ from src.api.state import (  # noqa: F401, E402
 console = Console()
 logger = logging.getLogger(__name__)
 
+from src.spot_screening import SpotScreener  # noqa: E402
+_spot_screener = SpotScreener()
+
 from src.api.channels_routes import (  # noqa: F401, E402
     _start_channel_runtime,
     _stop_channel_runtime,
@@ -143,6 +146,8 @@ async def _run_startup_preflight() -> None:
     # protected system jobs into the store before the first tick can run
     # (order + flag-off early-return documented on the callee).
     _start_scheduled_research_executor()
+    # Independent read-only spot screening; does not enable scheduled research or broker orders.
+    _spot_screener.start()
     from src.config.accessor import get_env_config
 
     if get_env_config().agent_tuning.vibe_trading_channels_auto_start:
@@ -156,6 +161,7 @@ async def _lifespan(_: FastAPI) -> AsyncIterator[None]:
         await _run_startup_preflight()
         yield
     finally:
+        await _spot_screener.stop()
         await _stop_scheduled_research_on_shutdown()
         # Reap background work this host owns before its runtime disappears.
         # Read the existing service rather than _get_session_service(): a
@@ -331,6 +337,9 @@ try_register_openbb_routes(app)
 # --- Scheduled research ---
 from src.api.scheduled_routes import register_scheduled_routes  # noqa: E402
 register_scheduled_routes(app)
+
+from src.api.spot_screener_routes import register_spot_screener_routes  # noqa: E402
+register_spot_screener_routes(app, _spot_screener)
 
 from src.api.scheduled_routes import (  # noqa: E402, F401
     CreateRunFromPlaybookRequest,

@@ -19,6 +19,9 @@ const Runtime = lazy(() =>
 const Scheduled = lazy(() =>
   import("@/pages/Scheduled").then((m) => ({ default: m.Scheduled })),
 );
+const SpotScreener = lazy(() =>
+  import("@/pages/SpotScreener").then((m) => ({ default: m.SpotScreener })),
+);
 const Reports = lazy(() =>
   import("@/pages/Reports").then((m) => ({ default: m.Reports })),
 );
@@ -68,6 +71,7 @@ export const router = createBrowserRouter([
       { path: "/pixel-office", element: wrap(PixelOffice) },
       { path: "/runtime", element: wrap(Runtime) },
       { path: "/scheduled", element: wrap(Scheduled) },
+      { path: "/spot-screener", element: wrap(SpotScreener) },
       { path: "/reports", element: wrap(Reports) },
       { path: "/research-artifacts", element: wrap(ResearchArtifacts) },
       { path: "/paper-trading", element: wrap(PaperTrading) },

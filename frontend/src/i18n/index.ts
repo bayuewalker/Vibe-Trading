@@ -140,10 +140,8 @@ i18n
       en: { translation: en },
     },
     initAsync: false,
-    // Default to English for everyone on first visit; only an explicit toggle
-    // (persisted to localStorage) switches language. After a manual choice
-    // the navigator value can act as a fallback when the saved language is
-    // removed.
+    // English is the default regardless of the browser/OS locale. Only
+    // an explicit switcher selection, persisted to localStorage, overrides it.
     fallbackLng: "en",
     supportedLngs: SUPPORTED_LANGUAGES.map((l) => l.code),
     // NOTE: Intentionally NOT using nonExplicitSupportedLngs — it strips
@@ -151,13 +149,8 @@ i18n
     // isSupportedCode to reject them ("zh-CN" → "zh", not in supportedLngs).
     interpolation: { escapeValue: false },
     detection: {
-      // In browsers the navigator.language gives the user's browser locale,
-      // useful as a fallback when no explicit choice is saved. In Node.js
-      // (SSR, tests) navigator.language reflects the *OS* locale which is
-      // meaningless for a browser-only app — skip it there.
-      order: typeof window !== "undefined"
-        ? ["localStorage", "navigator"]
-        : ["localStorage"],
+      // Never auto-select the browser language on first visit.
+      order: ["localStorage"],
       caches: ["localStorage"],
       lookupLocalStorage: "i18nextLng",
     },

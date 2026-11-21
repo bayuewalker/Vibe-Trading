@@ -16,6 +16,7 @@ export const NAVIGATION_GROUPS = [
   { id: "automation", items: [
     { id: "pixelOffice", to: "/pixel-office", icon: Building2 },
     { id: "scheduled", to: "/scheduled", icon: CalendarClock },
+    { id: "spotScreener", to: "/spot-screener", icon: BarChart3 },
     { id: "runtime", to: "/runtime", icon: Activity },
     { id: "settings", to: "/settings", icon: Settings },
   ] },
